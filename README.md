@@ -116,7 +116,7 @@ full_obs = {
     "SNR": 5,
     "Lam_Ref": 5000,
     
-    "OBJ_FIB_DISP": 0,
+    "OBJ_FIB_DISP": None,  # omit or set None for the default 90% MOS centering efficiency
     
     "PWV": 10,
     "FLI": 0.5,
@@ -172,6 +172,8 @@ WST(throughput_system='GRINAR')
 ```
 
 Only `AR` and `GRINAR` are valid values; any other value raises `ValueError`.
+
+For MOS observations, `OBJ_FIB_DISP` is optional and defaults to `None`. When it is omitted or set to `None`, the core applies the 90% mean object-centering efficiency. If a non-negative displacement is provided, the core uses that value in the geometric fiber-aperture calculation without the additional 90% factor.
 **NOTE**: *"COADD_XY": 'best' — automatically selects the spatial coadding that maximizes the SNR. Like the compute options in `time_from_source`, it updates "COADD_XY" in the obs dictionary with the chosen value.*
 
 **NOTE (3)**: *`"SNR_RANGE": True` — when set, `time_from_source` targets the median SNR over the wavelength window `[LAM_WIN1, LAM_WIN2]` instead of the SNR at `Lam_Ref`. Works for `compute='dit'`, `'ndit'`, and `'best'` (which internally uses `'ndit'`). Line sources (`Obj_SED='line'`) always use their line-center wavelength and ignore this flag. The window is automatically clipped to the instrument spectral range if it extends beyond it.*
@@ -255,9 +257,10 @@ update in future version
 
 ## Version
 
-### 1.7 — 17 September 2026
+### 1.7 — 21 September 2026
 - Updated IFS and MOS-LR wavelength ranges and transmission curves with the latest values from the WST system engineer.
 - Added selectable AR and GRINAR transmission systems through `WST(throughput_system=...)`; the default is AR.
+- Moved the default MOS object-centering loss into the core: omitted or `None` `OBJ_FIB_DISP` applies 90% mean centering efficiency, while an explicit non-negative displacement uses the geometric fiber coupling.
 
 ### 1.6 — 31 August 2026
 - **Refactored `get_data` into `ETC` class**: moved `get_data` as a `@staticmethod` inside `class ETC` with a module-level alias `get_data = ETC.get_data` for full backward compatibility.
