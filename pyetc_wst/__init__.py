@@ -9,9 +9,10 @@ __version__ = "1.7"
 __author__ = "Matteo Ferro & Roland Bacon"
 
 # Changelog
-# v1.7 (2026-09-17)
+# v1.7 (2026-09-21)
 #   - Updated MOS-LR & IFS wavelength ranges & transmission curves with the latest values from the system engineer (Olga Bellido) from version 1 (09/03/2026) to version 2.
 #   - Added the possibility to choose between the two transmission systems as an option in the WST constructor (throughput_system="AR" or "GRINAR"), defaulting to "AR".
+#   - Moved the default MOS object-centering loss into the core: omitted or None OBJ_FIB_DISP applies 90% mean centering efficiency, while an explicit non-negative displacement uses the geometric fiber coupling.
 # v1.6 (2026-08-31)
 #   - Refactored get_data function: moved get_data as a @staticmethod inside
 #     class ETC with a module-level alias for full backward compatibility.

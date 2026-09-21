@@ -39,19 +39,20 @@ class WST(ETC):
         
         # ------ Telescope ---------
         self.name = 'WST'
-        self.throughput_model_desc = 'Throughput model version 2 delivered by Olga Bellido, date 17/09/2026'
-        self.throughput_model_version = '17/09/2026'
+        self.throughput_model_desc = 'Throughput model version 2 delivered by Olga Bellido, date 21/09/2026'
+        self.throughput_model_version = '21/09/2026'
         self.release_info = {
             'version': PACKAGE_VERSION,
-            'release_date': '17 September 2026',
+            'release_date': '21 September 2026',
             'history': [
                 {
                     'version': '1.7',
                     'label': 'Version 1.7',
-                    'release_date': '17 September 2026',
+                    'release_date': '21 September 2026',
                     'changes': [
-                        'Updated MOS-LR & IFS wavelength ranges & tranmission curves with the latest values from the system engineer (Olga Bellido) from version 1 (09/03/2026) to version 2.',
+                        'Updated MOS-LR & IFS wavelength ranges & transmission curves with the latest values from the system engineer (Olga Bellido) from version 1 (09/03/2026) to version 2.',
                         'Added the possibility to choose between the two transmission systems as an option in the WST constructor (throughput_system="AR" or "GRINAR"), defaulting to "AR".',
+                        'Moved the default MOS object-centering loss into the core: omitted or None OBJ_FIB_DISP applies 90% mean centering efficiency, while an explicit non-negative displacement uses the geometric fiber coupling.',
                     ],
                 },
                 {
