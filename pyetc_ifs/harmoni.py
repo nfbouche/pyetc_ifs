@@ -1,17 +1,13 @@
 import logging
 import os, sys
 import time
-import numpy as np
 
-from mpdaf.obj import Spectrum, WaveCoord
 from mpdaf.log import setup_logging
 
 from .etc import ETC
 from . import __version__ as PACKAGE_VERSION
 
-# used by get_data
-from astropy.table import Table
-import astropy.units as u
+
 
 class HARMONI(ETC):
     
@@ -25,7 +21,7 @@ class HARMONI(ETC):
             band = 'zband'| 'Jband'| 'zJband' | 'Hband'| 'Kband' | 'HKband' (default 'Jband')
         """
         start_time = time.time()
-        self.refdir = CURDIR
+        self.refdir = self.CURDIR
         setup_logging(__name__, level=log, stream=sys.stdout)
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False
@@ -135,7 +131,7 @@ class HARMONI(ETC):
         ins.append(self.detector) #detector parameters
 
         if not skip_dataload:
-            self.get_data(self.ifs, chan, 'ifs', SKYDIR, TRANSDIR)
+            self.get_data(self.ifs, chan, 'ifs')
 
         chan = self.ifs['channels'][1]
         self.ifs[chan] = dict(desc=self.throughput_model_desc,
@@ -151,7 +147,8 @@ class HARMONI(ETC):
         ins.append(self.detector) #detector parameters
 
         if not skip_dataload:
-            self.get_data(self.ifs, chan, 'ifs', SKYDIR, TRANSDIR)
+            self.get_data(self.ifs, chan, 'ifs')
+
         chan = self.ifs['channels'][2]
         self.ifs[chan] = dict(desc=self.throughput_model_desc,
                               version=self.throughput_model_version,
@@ -166,7 +163,7 @@ class HARMONI(ETC):
         ins.append(self.detector) #detector parameters
 
         if not skip_dataload:
-            self.get_data(self.ifs, chan, 'ifs', SKYDIR, TRANSDIR)
+            self.get_data(self.ifs, chan, 'ifs')
             
         end_time = time.time()
         if log == logging.DEBUG or log == 'DEBUG':
