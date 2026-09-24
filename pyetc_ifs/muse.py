@@ -36,7 +36,7 @@ class MUSE(ETC):
         self.throughput_model_version = '14/07/2026'
         self.release_info = {
             'version': PACKAGE_VERSION,
-            'release_date': RELEASEDATE,
+            'release_date': DATEOFRELEASE,
             'history': [
                 {
                     'version': '0.1',
