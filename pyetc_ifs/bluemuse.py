@@ -3,15 +3,10 @@ import os, sys
 import time
 import numpy as np
 
-from mpdaf.obj import Spectrum, WaveCoord
 from mpdaf.log import setup_logging
 
 from .etc import ETC
 from . import __version__ as PACKAGE_VERSION
-
-# used by get_data
-from astropy.table import Table
-import astropy.units as u
 
 
 class blueMUSE(ETC):
