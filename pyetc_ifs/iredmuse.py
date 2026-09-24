@@ -1,18 +1,13 @@
 import logging
 import os, sys
 import time
-import numpy as np
 
-from mpdaf.obj import Spectrum, WaveCoord
 from mpdaf.log import setup_logging
 
 from .etc import ETC
 from . import __version__ as PACKAGE_VERSION
 from . import __releasedate__ as DATEOFRELEASE
 
-# used by get_data
-from astropy.table import Table
-import astropy.units as u
 
 class iredMUSE(ETC):
 
@@ -20,11 +15,15 @@ class iredMUSE(ETC):
     SKYDIR = CURDIR + '/sky'
     TRANSDIR = CURDIR + '/iredmuse'
 
-    def __init__(self, log=logging.INFO, skip_dataload=False,spaxel=0.22,dcurrent=0.02):
+    def __init__(self, log=logging.INFO, skip_dataload=False, spaxel=0.22, dcurrent=0.02):
         """
             Initialize the iredMUSE class with telescope and instrument parameters.
             spaxel: spaxel size in arcsec (default 0.22)
             dcurrent: dark current in e-/pixel/h (default 0.02)
+            @param log:
+            @param skip_dataload:
+            @param spaxel:
+            @param dcurrent:
         """
         start_time = time.time()
         self.refdir = self.CURDIR
