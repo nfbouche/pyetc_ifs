@@ -1,4 +1,4 @@
-# pyetc_iredmuse
+# pyetc_ifs
 
 Exposure Time Calculator (ETC) for the iredMUSE instrument.
 
@@ -13,9 +13,17 @@ Cite: Ferro, Genoni et al. 2026, SPIE
 
 ## Description
 
-**pyetc_iredmuse** is a Python package for exposure time calculation and signal-to-noise ratio (SNR) estimation for IFU instruments, including:
+**pyetc_ifs** is a Python package for exposure time calculation and signal-to-noise ratio (SNR) estimation for IFU instruments, including:
 
-- **IFS** (Integral Field Spectrograph): z and J and zJ channels
+- muse
+
+- wst
+
+- bluemuse
+
+- iredmuse
+
+- harmoni
 
 ## Requirements
 
@@ -39,25 +47,25 @@ pip install "numpy>=1.20.0" "scipy>=1.7.0" "matplotlib>=3.3.0" "astropy>=5.0.0" 
 You can install directly from GitHub using pip:
 
 ```bash
-pip install git+https://github.com/nfbouche/pyetc_iredmuse.git
+pip install git+https://github.com/nfbouche/pyetc_ifs.git
 ```
 
 If you already have it installed via pip, you can upgrade it with:
 
 #### Option 1: forced (recommended)
 ```bash
-pip install --force-reinstall git+https://github.com/nfbouche/pyetc_iredmuse.git
+pip install --force-reinstall git+https://github.com/nfbouche/pyetc_ifs.git
 ```
 
 #### Option 2: normal upgrade
 ```bash
-pip install --upgrade git+https://github.com/nfbouche/pyetc_iredmuse.git
+pip install --upgrade git+https://github.com/nfbouche/pyetc_ifs.git
 ```
 
 #### Option 3: uninstall and reinstall (cleanest option)
 ```bash
 pip uninstall pyetc_ifs
-pip install git+https://github.com/nfbouche/pyetc_iredmuse.git
+pip install git+https://github.com/nfbouche/pyetc_ifs.git
 ```
 
 ## Quick Start
