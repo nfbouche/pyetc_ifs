@@ -1,3 +1,4 @@
+from astropy.modeling import functional_models
 import logging
 import os
 import glob
@@ -48,6 +49,9 @@ wave_grid = 5
 
 # saturation threshold in e-/ph/counts
 threshold_sat = 50000  
+
+# Mean MOS fiber-centering loss used when no explicit object displacement is supplied.
+MOS_DEFAULT_CENTERING_EFF = 0.9
 
 # default angstrom value for the SNR wave tolerance check
 default_angstrom_edge = 2
@@ -148,7 +152,7 @@ class ETC:
             self.logger.info('Diameter: %.2f m Eff. Area MOS: %.1f m2 Eff. Area IFS: %.1f m2', self.tel['diameter'],self.tel['effective_area_MOS'], self.tel['effective_area_IFS'])
         else:
             self.logger.info('Diameter: %.2f m Eff. Area IFS: %.1f m2', self.tel['diameter'], self.tel['effective_area_IFS'])
-        
+
         for ins_name in ins_names:
             insfam = getattr(self, ins_name)
             for chan in insfam['channels']:
@@ -279,6 +283,14 @@ class ETC:
             upload_flux=None
         )
 
+        if obs['disp'] is not None:
+            try:
+                obs['disp'] = float(obs['disp'])
+            except (TypeError, ValueError):
+                raise ValueError("OBJ_FIB_DISP must be a non-negative number or None")
+            if not np.isfinite(obs['disp']) or obs['disp'] < 0:
+                raise ValueError("OBJ_FIB_DISP must be a non-negative number or None")
+
         # GLAO handling: override seeing and PSF beta
         if obs['glao']:
             ins_name = fo.get("INS", "")
@@ -362,6 +374,12 @@ class ETC:
 
         # Get spectrum
         spec_input, spec = self.get_spec()
+
+        # With no explicit fiber displacement, preserve the mean MOS centering
+        # loss used by the web interface. An explicit displacement is handled
+        # geometrically by mos_fiber_aperture/mos_fiber_aperture_batch.
+        if conf['type'] == 'MOS' and obs['disp'] is None:
+            spec = spec * MOS_DEFAULT_CENTERING_EFF
 
         # Handle resolved source image
         ima = None
@@ -450,7 +468,7 @@ class ETC:
 
         skywave = ins['sky'][0]['emi'].wave
         skycoord = skywave.coord()
-        
+
         ins['instrans'] = Spectrum(
             data=np.interp(skycoord, trans['wave'] * 10, trans['total']), wave=skywave)
         ins['telescope'] = Spectrum(
@@ -1796,7 +1814,8 @@ class ETC:
         ron_tot = Spectrum(data=np.full(wave.shape, ron), wave=spec.wave)
         
         factor_source = spec * flux * Kt * obs['dit'] * obs['ndit']
-        fiber_injection_full = np.ones_like(wave)
+        centering_eff = MOS_DEFAULT_CENTERING_EFF if obs['disp'] is None else 1.0
+        fiber_injection_full = np.full_like(wave, centering_eff)
         
         if obs['ima_type'] == 'sb':
             source_ph_aperture = factor_source * np.pi * (ins['aperture'] / 2)**2
@@ -1817,11 +1836,12 @@ class ETC:
                     array_of_images.append(conv_ima)
 
             # we take the fraction of flux collected by the fiber aperture
-            frac_fiber = self.mos_fiber_aperture_batch(ins, array_of_images, displacement=obs["disp"])
+            displacement = 0.0 if obs['disp'] is None else obs['disp']
+            frac_fiber = self.mos_fiber_aperture_batch(ins, array_of_images, displacement=displacement)
 
             # Interpolate onto the full wave grid
             frac_fiber_full = np.interp(wave, selected_wave, frac_fiber)
-            fiber_injection_full = frac_fiber_full
+            fiber_injection_full = frac_fiber_full * centering_eff
 
             source_ph_aperture = factor_source * frac_fiber_full
 
@@ -2405,10 +2425,19 @@ class ETC:
             roots = np.roots([A, B, C])
             ditv = roots[np.isreal(roots) & (roots > 0)].real[0]
 
+            # saturation check: compute the max-DIT that avoids saturation
+            counts_sat = source_ph_peak.data + sky_ph_spaxel.data
+            dit_sat = threshold_sat / max(counts_sat)
+            flag_sat = bool(ditv > dit_sat)
             if debug:
+                self.logger.debug(f"Maximum DIT to avoid saturation: {dit_sat} seconds")
+                if flag_sat:
+                    self.logger.debug(f"WARNING: computed DIT ({ditv:.2f} s) exceeds saturation limit ({dit_sat:.2f} s)")
                 self.logger.debug(f"Computed DIT: {ditv} seconds for NDIT: {nditv} to achieve SNR: {snrv} at wavelength: {wave_snr} AA (nearest to requested SNR wavelength: {obs['snr_wave']} AA), with spectral rebinning factor: {obs['spbin']}")
                 self.logger.debug(f"Overriding DIT in the observation dictionary...")
             res['dit'] = ditv
+            res['dit_sat'] = dit_sat
+            res['flag_sat'] = flag_sat
             obs['dit'] = ditv
         
         elif compute == 'ndit':
@@ -2445,10 +2474,19 @@ class ETC:
 
             nditv = snrv**2 * (sv + skyv + darkv + ronv / ditv) / (sv**2 * ditv)
 
+            # saturation check: compute the max-DIT that avoids saturation
+            counts_sat = source_ph_peak.data + sky_ph_spaxel.data
+            dit_sat = threshold_sat / max(counts_sat)
+            flag_sat = bool(ditv > dit_sat)
             if debug:
+                self.logger.debug(f"Maximum DIT to avoid saturation: {dit_sat} seconds")
+                if flag_sat:
+                    self.logger.debug(f"WARNING: computed DIT ({ditv:.2f} s) exceeds saturation limit ({dit_sat:.2f} s)")
                 self.logger.debug(f"Computed NDIT: {nditv} exposures for DIT: {ditv} to achieve SNR: {snrv} at wavelength: {wave_snr} AA (nearest to requested SNR wavelength: {obs['snr_wave']} AA), with spectral rebinning factor: {obs['spbin']}")
                 self.logger.debug(f"Overriding NDIT in the observation dictionary...")
             res['ndit'] = nditv
+            res['dit_sat'] = dit_sat
+            res['flag_sat'] = flag_sat
             obs['ndit'] = nditv
 
         elif compute == 'best':
@@ -2625,7 +2663,8 @@ class ETC:
         ron_tot = Spectrum(data=np.full(wave.shape, ron), wave=spec.wave)
         
         factor_source = spec * flux * Kt
-        fiber_injection_snr = 1.0
+        centering_eff = MOS_DEFAULT_CENTERING_EFF if obs['disp'] is None else 1.0
+        fiber_injection_snr = centering_eff
         
         if obs['ima_type'] == 'sb':
             source_ph_aperture = factor_source * np.pi * (ins['aperture'] / 2)**2
@@ -2643,8 +2682,9 @@ class ETC:
                 selected_image = convolve_and_center(ima, psf_single)
 
             # Compute fiber aperture fraction for single image
-            frac_fiber_snr = self.mos_fiber_aperture(ins, selected_image, displacement=obs["disp"])
-            fiber_injection_snr = frac_fiber_snr
+            displacement = 0.0 if obs['disp'] is None else obs['disp']
+            frac_fiber_snr = self.mos_fiber_aperture(ins, selected_image, displacement=displacement)
+            fiber_injection_snr = frac_fiber_snr * centering_eff
 
             # Apply fiber fraction to full spectrum (use snr_wave fraction for all)
             source_ph_aperture = factor_source * frac_fiber_snr
@@ -2691,10 +2731,19 @@ class ETC:
             roots = np.roots([A, B, C])
             ditv = roots[np.isreal(roots) & (roots > 0)].real[0]
 
+            # saturation check: compute the max-DIT that avoids saturation
+            counts_sat = (source_ph_aperture.data + sky_ph_aperture.data) / (num_trace * trace_pixel_width)
+            dit_sat = threshold_sat / max(counts_sat)
+            flag_sat = bool(ditv > dit_sat)
             if debug:
+                self.logger.debug(f"Maximum DIT to avoid saturation: {dit_sat} seconds")
+                if flag_sat:
+                    self.logger.debug(f"WARNING: computed DIT ({ditv:.2f} s) exceeds saturation limit ({dit_sat:.2f} s)")
                 self.logger.debug(f"Computed DIT: {ditv} seconds for NDIT: {nditv} to achieve SNR: {snrv} at wavelength: {wave_snr} AA (nearest to requested SNR wavelength: {obs['snr_wave']} AA), with spectral rebinning factor: {obs['spbin']}")
                 self.logger.debug(f"Overriding DIT in the observation dictionary...")
             res['dit'] = ditv
+            res['dit_sat'] = dit_sat
+            res['flag_sat'] = flag_sat
             obs['dit'] = ditv
 
         elif compute == 'ndit':
@@ -2731,12 +2780,21 @@ class ETC:
 
             nditv = snrv**2 * (sv + skyv + darkv + ronv / ditv) / (sv**2 * ditv)
 
+            # saturation check: compute the max-DIT that avoids saturation
+            counts_sat = (source_ph_aperture.data + sky_ph_aperture.data) / (num_trace * trace_pixel_width)
+            dit_sat = threshold_sat / max(counts_sat)
+            flag_sat = bool(ditv > dit_sat)
             if debug:
+                self.logger.debug(f"Maximum DIT to avoid saturation: {dit_sat} seconds")
+                if flag_sat:
+                    self.logger.debug(f"WARNING: computed DIT ({ditv:.2f} s) exceeds saturation limit ({dit_sat:.2f} s)")
                 self.logger.debug(f"Computed NDIT: {nditv} exposures for DIT: {ditv} to achieve SNR: {snrv} at wavelength: {wave_snr} AA (nearest to requested SNR wavelength: {obs['snr_wave']} AA), with spectral rebinning factor: {obs['spbin']}")
                 self.logger.debug(f"Overriding NDIT in the observation dictionary...")
             res['ndit'] = nditv
+            res['dit_sat'] = dit_sat
+            res['flag_sat'] = flag_sat
             obs['ndit'] = nditv
-        
+
         elif compute == 'best':
             _checkobs(self.obs, keys=['snr', 'snr_wave'])
             snrv = obs['snr']
@@ -3414,6 +3472,9 @@ def simulate_counts_vectorized(npix, source_arr, sky_arr, dark, RON, seed=None):
     noisy_counts = poisson_counts + ron_noise
     total_counts = noisy_counts.sum(axis=1)
     return total_counts
+
+# Alias to maintain retro comp.
+get_data = ETC.get_data
 
 # # # # # # # # # # # # # # # #
 

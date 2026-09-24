@@ -20,21 +20,53 @@ class WST(ETC):
     SKYDIR = CURDIR + '/sky'
     TRANSDIR = CURDIR + '/wst'
 
-    def __init__(self, log=logging.INFO, skip_dataload=False):
+    def __init__(self, log=logging.INFO, skip_dataload=False, throughput_system=None):
         start_time = time.time()
         self.refdir = self.CURDIR
         setup_logging(__name__, level=log, stream=sys.stdout)
         self.logger = logging.getLogger(__name__)
         self.logger.propagate = False
-        
+
+        if throughput_system is None:
+            throughput_system = 'AR'
+        else:
+            throughput_system = str(throughput_system).upper()
+        if throughput_system not in ('AR', 'GRINAR'):
+            raise ValueError(
+                "throughput_system must be 'AR', 'GRINAR', or not specified"
+            )
+        self.throughput_system = throughput_system
+        self.throughput_dir = os.path.join(WSTDIR, throughput_system)
+
         # ------ Telescope ---------
         self.name = 'WST'
-        self.throughput_model_desc = 'Throughput model version 1 delivered by Olga Bellido, date 09/03/2026'
-        self.throughput_model_version = '09/03/2026'
+        self.throughput_model_desc = 'Throughput model version 2 delivered by Olga Bellido, date 21/09/2026'
+        self.throughput_model_version = '21/09/2026'
         self.release_info = {
             'version': PACKAGE_VERSION,
-            'release_date': '22 June 2026',
+            'release_date': '21 September 2026',
             'history': [
+                {
+                    'version': '1.7',
+                    'label': 'Version 1.7',
+                    'release_date': '21 September 2026',
+                    'changes': [
+                        'Updated MOS-LR & IFS wavelength ranges & transmission curves with the latest values from the system engineer (Olga Bellido) from version 1 (09/03/2026) to version 2.',
+                        'Added the possibility to choose between the two transmission systems as an option in the WST constructor (throughput_system="AR" or "GRINAR"), defaulting to "AR".',
+                        'Moved the default MOS object-centering loss into the core: omitted or None OBJ_FIB_DISP applies 90% mean centering efficiency, while an explicit non-negative displacement uses the geometric fiber coupling.',
+                    ],
+                },
+                {
+                    'version': '1.6',
+                    'label': 'Version 1.6',
+                    'release_date': '31 August 2026',
+                    'changes': [
+                        'Refactored get_data function: moved get_data as a @staticmethod inside class ETC, maintaining a top-level module alias for full backward compatibility.',
+                        'Restored saturation check parity in time_from_source across all compute modes (dit, ndit, best) for both IFS and MOS instruments: dit_sat and flag_sat are now computed and returned, and saturation warnings are properly logged.',
+                        'Web Interface: implemented fixed 0.9 object centering efficiency (CENTERING_EFF = 0.9) for all MOS channels to account for residual random fiber positioning offsets.',
+                        'Web Interface: styled saturation warning messages in computation debug logs with bold red text for improved visibility.',
+                    ],
+                },
                 {
                     'version': '1.5',
                     'label': 'Version 1.5',
@@ -140,14 +172,14 @@ class WST(ETC):
                               iq_beta = 2.80, # beta PSF of telescope + instrument (non-AO Moffat)
                               spaxel_size = 0.25, # spaxel size in arcsec ( * * * check for the binning 2x1, could be 0.125)
                               dlbda = 0.48, # Angstroem/pixel, previously 0.5, updated on 03/03/2026
-                              lbda1 = 3700, # starting wavelength in Angstroem
-                              lbda2 = 6400, # end wavelength in Angstroem
+                              lbda1 = 3717, # starting wavelength in Angstroem
+                              lbda2 = 6382, # end wavelength in Angstroem
                               lsfpix = 2.5, # LSF in spectel, previously 3.0, updated on 03/03/2026 ( * * * check)
                               ron = 1.0 * np.sqrt(2), # readout noise (e-) # squared sum for the 2x1 binning
                               dcurrent = 1.0 * 2, # dark current (e-/pixel/h) # sum for the 2x1 binning                                
                               )
         if not skip_dataload:
-            self.get_data(self.ifs, chan, 'ifs')
+            self.get_data(self.ifs, chan, 'ifs', self.throughput_dir)
 
         # IFS red channel
         chan = 'red'
@@ -159,14 +191,14 @@ class WST(ETC):
                                iq_beta = 2.80, # beta PSF of telescope + instrument (non-AO Moffat)
                                spaxel_size = 0.25, # spaxel size in arcsec ( * * * check for the binning 2x1, could be 0.125)
                                dlbda = 0.64, # Angstroem/pixel, previously 0.67, updated on 03/03/2026
-                               lbda1 = 6200, # starting wavelength in Angstroem
-                               lbda2 = 9800, # end wavelength in Angstroem
+                               lbda1 = 6217, # starting wavelength in Angstroem
+                               lbda2 = 9782, # end wavelength in Angstroem
                                lsfpix = 2.5, # LSF in spectel, previously 3.0, updated on 03/03/2026 ( * * * check)
                                ron = 1.0 * np.sqrt(2), # readout noise (e-) # squared sum for the 2x1 binning
                                dcurrent = 1.0 * 2, # dark current (e-/pixel/h) # sum for the 2x1 binning   
                                )
         if not skip_dataload:
-            self.get_data(self.ifs, chan, 'ifs')
+            self.get_data(self.ifs, chan, 'ifs', self.throughput_dir)
               
         # # --------- MOSLR-VIS 4 channels 6k CCD -------------
         
@@ -186,7 +218,7 @@ class WST(ETC):
                                 aperture = 1.03, # fiber diameter in arcsec 
                                 dlbda = 0.206, # Angstroem/pixel, previously 0.256, updated on 03/03/2026
                                 lbda1 = 3700, # starting wavelength in Angstroem **from Olga's throughput
-                                lbda2 = 4770, # end wavelength in Angstroem **from Olga's throughput
+                                lbda2 = 4860, # end wavelength in Angstroem **from Olga's throughput
                                 lsfpix = 6.8, # LSF in spectel, previously 4.83, updated on 03/03/2026 ( * * * check)
                                 ron = 1.0, # readout noise (e-) 
                                 dcurrent = 1.0, # dark current (e-/pixel/h)                           
@@ -205,8 +237,8 @@ class WST(ETC):
                                 spaxel_size = 0.1515 , # spaxel size in arcsec, previously 0.208, updated on 03/03/2026
                                 aperture = 1.03, # fiber diameter in arcsec
                                 dlbda = 0.266, # Angstroem/pixel, previously 0.352, updated on 03/03/2026
-                                lbda1 = 4630, # starting wavelength in Angstroem **from Olga's throughput
-                                lbda2 = 6080, # end wavelength in Angstroem **from Olga's throughput
+                                lbda1 = 4690, # starting wavelength in Angstroem **from Olga's throughput
+                                lbda2 = 6150, # end wavelength in Angstroem **from Olga's throughput
                                 lsfpix = 6.8, # LSF in spectel, previously 4.83, updated on 03/03/2026
                                 ron = 1.0, # readout noise (e-)
                                 dcurrent = 1.0, # dark current (e-/pixel/h)                                
@@ -225,8 +257,8 @@ class WST(ETC):
                                 spaxel_size = 0.1515, # spaxel size in arcsec, previously 0.208, updated on 03/03/2026
                                 aperture = 1.03, # fiber diameter in arcsec
                                 dlbda = 0.344, # Angstroem/pixel, previously 0.352, updated on 03/03/2026
-                                lbda1 = 5920, # starting wavelength in Angstroem **from Olga's throughput
-                                lbda2 = 7710, # end wavelength in Angstroem **from Olga's throughput
+                                lbda1 = 5970, # starting wavelength in Angstroem **from Olga's throughput
+                                lbda2 = 7810, # end wavelength in Angstroem **from Olga's throughput
                                 lsfpix = 6.8, # LSF in spectel, previously 4.83, updated on 03/03/2026 ( * * * check)
                                 ron = 1.0, # readout noise (e-)
                                 dcurrent = 1.0, # dark current (e-/pixel/h)                             
@@ -245,8 +277,8 @@ class WST(ETC):
                                 spaxel_size = 0.1515, # spaxel size in arcsec, previously 0.208, updated on 03/03/2026
                                 aperture = 1.03, # fiber diameter in arcsec
                                 dlbda = 0.362, # Angstroem/pixel, previously 0.486, updated on 03/03/2026
-                                lbda1 = 7490, # starting wavelength in Angstroem **from Olga's throughput
-                                lbda2 = 9800, # end wavelength in Angstroem **from Olga's throughput
+                                lbda1 = 7540, # starting wavelength in Angstroem **from Olga's throughput
+                                lbda2 = 9300, # end wavelength in Angstroem **from Olga's throughput
                                 lsfpix = 6.8, # LSF in spectel, previously 4.83, updated on 03/03/2026 ( * * * check)
                                 ron = 1.0, # readout noise (e-)
                                 dcurrent = 1.0, # dark current (e-/pixel/h)                              

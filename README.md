@@ -66,6 +66,11 @@ pip install git+https://github.com/nfbouche/pyetc_iredmuse.git
 from pyetc_ifs import iredMUSE
 
 # Initialize the ETC, 'DEBUG' will allow you to see useful prints during the computation,
+# skip_dataload = False will load the static sky configurations + general transmissions.
+# throughput_system selects the transmission set; omitted/None defaults to AR.
+wst = WST(log = 'DEBUG', skip_dataload = False, throughput_system = 'AR')
+# Use throughput_system = 'GRINAR' to load the alternative transmission set.
+
 # skip_dataload = False will load the static sky configurations + general transmissions
 redmuse = iredMUSE(log='DEBUG', skip_dataload=False)
 
@@ -120,7 +125,7 @@ full_obs = {
     "SNR": 5,
     "Lam_Ref": 5000,
     
-    "OBJ_FIB_DISP": 0,
+    "OBJ_FIB_DISP": None,  # omit or set None for the default 90% MOS centering efficiency
     
     "PWV": 10,
     "FLI": 0.5,
@@ -167,6 +172,17 @@ full_obs = {
     "LAM_WIN2": 6000,    # window end in Å
 }
 ```
+
+The throughput system is selected when initializing `WST`:
+
+```python
+WST(throughput_system='AR')      # default when omitted or set to None
+WST(throughput_system='GRINAR')
+```
+
+Only `AR` and `GRINAR` are valid values; any other value raises `ValueError`.
+
+For MOS observations, `OBJ_FIB_DISP` is optional and defaults to `None`. When it is omitted or set to `None`, the core applies the 90% mean object-centering efficiency. If a non-negative displacement is provided, the core uses that value in the geometric fiber-aperture calculation without the additional 90% factor.
 **NOTE**: *"COADD_XY": 'best' — automatically selects the spatial coadding that maximizes the SNR. Like the compute options in `time_from_source`, it updates "COADD_XY" in the obs dictionary with the chosen value.*
 
 **NOTE (3)**: *`"SNR_RANGE": True` — when set, `time_from_source` targets the median SNR over the wavelength window `[LAM_WIN1, LAM_WIN2]` instead of the SNR at `Lam_Ref`. Works for `compute='dit'`, `'ndit'`, and `'best'` (which internally uses `'ndit'`). Line sources (`Obj_SED='line'`) always use their line-center wavelength and ignore this flag. The window is automatically clipped to the instrument spectral range if it extends beyond it.*
@@ -235,6 +251,6 @@ update in future version
   
 ## Contact
 
-Matteo Ferro - [nicolas.bouche@cnrs.fr]
+Nicolas Bouché - [nicolas.bouche@cnrs.fr]
 
 Project Link: [https://github.com/nfbouche/pyetc_iredmuse](https://github.com/nfbouche/pyetc_iredmuse)

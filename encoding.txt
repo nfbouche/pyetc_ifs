@@ -1,3 +1,12 @@
+# # # PARAMETERS FOR THE WST CONSTRUCTOR
+
+"throughput_system" (str, optional, default "AR"):
+- pass this as a keyword argument to WST(...), not inside full_obs
+- "AR" - use the transmission files in data/wst/AR
+- "GRINAR" - use the transmission files in data/wst/GRINAR
+- if omitted or set to None, "AR" is used
+- any other value raises ValueError; valid values are "AR", "GRINAR", or not specified
+
 # # # LIST OF PARAMETERS FOR THE full_obs DICTIONARY, and the related ranges/possible values
 
 "INS" (str):
@@ -19,7 +28,9 @@
 "Lam_Ref" (float/int, positive) - REFERENCE WAVE WHEN SNR IS GIVEN
 
 Needed only for moshr/moslr    
-"OBJ_FIB_DISP": float/int (in [0, 0.6]) - OBJECT FIBER DISPLACEMENT, IN ARCSEC
+"OBJ_FIB_DISP": float/int or None (optional, default None) - OBJECT FIBER DISPLACEMENT, IN ARCSEC
+- omitted or set to None: the core applies the default 90% mean MOS object-centering efficiency and uses zero geometric displacement
+- explicit non-negative value: uses that displacement in the geometric fiber-aperture calculation without an additional 90% factor
     
 "SEE" (float/int, positive) - SEEING
 
