@@ -1,12 +1,12 @@
 """
-pyetc_ifs - Exposure Time Calculator for the Wide-Field Spectroscopic Telescope (WST)
+pyetc_ifs - Exposure Time Calculator for IFS
 
 A Python package for exposure time calculation and signal-to-noise ratio estimation
-for the WST instrument suite (IFS, MOS-LR, MOS-HR).
+for IFS instruments MUSE BlueMUSE iredMUSE, WST and Harmoni
 """
 
-__version__ = "0.2"
-__releasedate__ = "14 July 2026"
+__version__ = "0.3"
+__releasedate__ = "24 Sep 2026"
 __author__ = "Nicolas Bouché & Matteo Ferro & Roland Bacon"
 
 # Import main classes and functions
